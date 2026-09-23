@@ -1,0 +1,8 @@
+node_modules/
+dist/
+renders/*
+!renders/.gitkeep
+.DS_Store
+*.log
+.vite/
+__pycache__/

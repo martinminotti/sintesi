@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SINTESI</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+      body { display: flex; align-items: center; justify-content: center; }
+      canvas { display: block; }
+      #debug {
+        position: fixed; left: 12px; bottom: 12px; display: none;
+        font: 11px/1.4 'IBM Plex Mono', monospace; color: #888; white-space: pre;
+      }
+      body.debug #debug { display: block; }
+      body.debug { cursor: default; }
+    </style>
+  </head>
+  <body>
+    <canvas id="sintesi"></canvas>
+    <div id="debug"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
