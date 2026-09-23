@@ -1,0 +1,123 @@
+{
+  "session": "session-01",
+  "note": "First real synthesis of SINTESI, direction C. Proposals are the system's decisions (docs/MILESTONE_2_PLAN.md); the view outside the window is taken only from 00_firma/firma.txt (field 'percepibile').",
+  "intake": "archive/intake",
+  "output": "archive/synthesis/session-01",
+  "plate": {
+    "file": "01_scena/P1.tif",
+    "crop_x": 0.5,
+    "crop_y": 0.5
+  },
+  "working": {
+    "width": 896,
+    "height": 1600
+  },
+  "master": {
+    "width": 2160,
+    "height": 3840
+  },
+  "models": {
+    "checkpoint": "RealVisXL_V5.0_fp16.safetensors",
+    "controlnet_depth": "controlnet-depth-sdxl-1.0.fp16.safetensors",
+    "depth": "depth_anything_v2_vits.pth",
+    "upscaler": "RealESRGAN_x2plus.pth"
+  },
+  "sampler": {
+    "steps": 32,
+    "cfg": 4.5,
+    "sampler": "dpmpp_2m",
+    "scheduler": "karras"
+  },
+  "style": {
+    "positive": "35mm film photograph, interior, soft overcast daylight from a window, natural skin texture, fine film grain, slight lens softness at the edges, muted natural colours, documentary photography, unposed, quiet",
+    "negative": "illustration, painting, render, cgi, 3d, cartoon, anime, plastic skin, airbrushed, oversaturated, hdr, neon, bokeh balls, text, watermark, logo, frame border, deformed, extra fingers, distorted face"
+  },
+  "resynthesis": {
+    "seed": 1987,
+    "denoise": 0.32,
+    "controlnet_strength": 0.55,
+    "controlnet_end": 0.8
+  },
+  "regions": {
+    "view": {
+      "mask": "09_maschere/view.png",
+      "grow": 6,
+      "denoise": 0.95
+    },
+    "wall": {
+      "mask": "09_maschere/wall.png",
+      "grow": 8,
+      "denoise": 0.9
+    },
+    "vessel": {
+      "mask": "09_maschere/vessel.png",
+      "grow": 10,
+      "denoise": 0.75
+    },
+    "coat": {
+      "mask": "09_maschere/coat.png",
+      "grow": 4,
+      "denoise": 0.6
+    },
+    "gaze": {
+      "mask": "09_maschere/gaze.png",
+      "grow": 6,
+      "denoise": 0.5
+    }
+  },
+  "epistemic_masks": {
+    "figure": "09_maschere/figure.png"
+  },
+  "synthesis": {
+    "seed": 2026,
+    "order": [
+      "view",
+      "wall",
+      "vessel",
+      "coat",
+      "gaze"
+    ],
+    "proposals": {
+      "view": "the view through the window: {percepibile}, seen from inside the room, daylight, slightly overexposed",
+      "wall": "a small framed photograph hanging on the plaster wall, thin wooden frame",
+      "vessel": "a ceramic cup on the table, its handle turned to the left",
+      "coat": "a brown wool coat",
+      "gaze": "eyes open, looking out of the window, to the left"
+    }
+  },
+  "alternatives": [
+    {
+      "id": "alt-1",
+      "seed": 3001,
+      "proposals": {
+        "view": "the view through the window: a building facade across a courtyard, rows of windows",
+        "wall": "bare plaster wall, nothing hanging",
+        "vessel": "a drinking glass on the table",
+        "coat": "a navy blue wool coat",
+        "gaze": "eyes open, looking towards the camera"
+      }
+    },
+    {
+      "id": "alt-2",
+      "seed": 3002,
+      "proposals": {
+        "view": "the view through the window: trees, leaves, overcast sky",
+        "wall": "a small wooden shelf with two books on the wall",
+        "vessel": "a ceramic cup on the table, its handle turned to the right",
+        "coat": "a dark green wool coat",
+        "gaze": "eyes looking down at the table"
+      }
+    },
+    {
+      "id": "alt-3",
+      "seed": 3003,
+      "proposals": {
+        "view": "the view through the window: a white overcast sky, nothing else visible",
+        "wall": "a small round mirror on the wall",
+        "vessel": "a glass of water on the table",
+        "coat": "a grey wool coat",
+        "gaze": "eyes closed"
+      }
+    }
+  ]
+}

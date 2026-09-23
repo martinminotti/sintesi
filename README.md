@@ -28,6 +28,7 @@ npm run dev            # riproduzione live, qualità DEV → http://127.0.0.1:51
 
 Parametri URL: `?quality=dev|preview|final` · `?seed=1987` · `?timeline=prototype|study|full` ·
 `?composition=A|B|C` (ritratto · ambiente · figura + ambiente, default C) · `?typography=none|minimal` ·
+`?subject=<sessione>` (una sessione di sintesi in `archive/synthesis/`, al posto del soggetto procedurale) ·
 `?view=work|epistemic|field|subject-observed|subject-synthesis|subject-alt1…3|subject-data` (viste diagnostiche).
 
 Tastiera (solo sviluppo/installazione, nessuna UI a schermo): `spazio` pausa · `←/→` ±1 s · `1–5` salta alla fase · `d` stato interno · `f` fullscreen.
@@ -60,6 +61,7 @@ Senza `--gpu` il rendering usa SwiftShader (CPU): più lento, ma **identico bit 
 ```bash
 npm test            # unit test (timeline, confidence, grafo, determinismo del layout)
 npm run validate    # dataset, timeline, determinismo dei frame, legge della coerenza
+npm run test:tools  # sessione ComfyUI contro un server finto (Python + Pillow)
 npm run build       # typecheck + build statica in dist/
 ```
 
@@ -100,3 +102,6 @@ sintesi/
 - [docs/MILESTONE_2_PLAN.md](docs/MILESTONE_2_PLAN.md) · [docs/MILESTONE_2_REVIEW.md](docs/MILESTONE_2_REVIEW.md)
 - [docs/CAPTURE_PROTOCOL.md](docs/CAPTURE_PROTOCOL.md) — come costruire l'archivio reale
 - [docs/AI_MATERIAL_WORKFLOW.md](docs/AI_MATERIAL_WORKFLOW.md) — ComfyUI e mappe, locale e offline
+- [docs/COMFYUI_SESSION_01.md](docs/COMFYUI_SESSION_01.md) — la prima sintesi reale (`tools/comfy/`)
+
+> Il repository è **pubblico**: il materiale personale dell'autore non vi entra mai (`archive/` è esclusa da git).

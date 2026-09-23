@@ -3,7 +3,9 @@
 > Modello AI = materiale. Engine SINTESI = autore del processo.
 > Il modello produce immagini; l'engine decide quanto, quando e con quale certezza mostrarle.
 
-Stato: **progettato, non ancora eseguito**. Questo ambiente di sviluppo non ha GPU né le foto dell'autore. Il workflow va eseguito sulla macchina dell'autore (o su una GPU a noleggio), e i file risultanti entrano in `archive/synthesis/`.
+Stato: **pronto, non ancora eseguito**. La prima sessione concreta è in [COMFYUI_SESSION_01.md](COMFYUI_SESSION_01.md) (`tools/comfy/`), testata contro un server finto con la stessa API di ComfyUI.
+
+> **Revisione per la sessione 01.** Il percorso qui sotto (blockout in Blender, LoRA dell'autore) resta un'opzione per iterazioni successive. La sessione 01 è più semplice e più onesta: parte dalla fotografia reale P1, la rigenera interamente a bassa intensità tenuta dalla sua profondità, e decide per inpainting solo nelle regioni non supportate. Non servono né blockout né LoRA, e nessun modello di riconoscimento facciale.
 
 ## Cosa serve all'engine
 
