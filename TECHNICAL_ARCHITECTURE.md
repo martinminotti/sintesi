@@ -37,14 +37,14 @@ dataset (archive/ o demo)          timeline (dichiarativa)          seed
                           ▼
                      post.frag (grana, nero, dither) → frame
                           │
-                          └──► ArtisticState ──► AudioParams / control.csv
+                          └──► ArtworkState ──► AudioParams / control.csv
 ```
 
 ## Componenti
 
 **`config.ts`** — preset di qualità (`dev` 0.25×, `preview` 0.5×, `final` 1.0× di 2160 × 3840) tramite `renderScale`; risoluzione del campo, tap di blur, passi del raymarch, grana.
 
-**`timeline/`** — la timeline è un dato: fasi con `start`, `end`, `title`. `evaluateTimeline(t)` restituisce la fase attiva e il progresso di *ogni* fase. I layer non conoscono tempi assoluti: chiedono "quanto siamo dentro CORRELATION?". Due timeline: `prototype` (25 s) e `full` (210 s). Si possono cambiare le durate senza toccare il renderer.
+**`timeline/`** — la timeline è un dato: fasi con `start`, `end`, `title`. `evaluateTimeline(t)` restituisce la fase attiva e il progresso di *ogni* fase. I layer non conoscono tempi assoluti: chiedono "quanto siamo dentro CORRELATION?". Tre timeline: `prototype` (25 s, milestone 1), `study` (58 s, l'arco compresso) e `full` (210 s). Si possono cambiare le durate senza toccare il renderer.
 
 **`evidence/`** — il modello concettuale:
 
@@ -61,18 +61,18 @@ type Provenance = 'observed' | 'derived' | 'inferred' | 'synthetic';
 
 **`core/choreography.ts`** — il cuore. `evaluate(t)` calcola posizione, dimensione, confidence e coerenza di ogni elemento, delle relazioni e del campo, *senza stato*: nessun valore passa da un frame al successivo. Ordine di acquisizione, catalogo dell'archivio, mappa semantica e punti d'arrivo sono calcolati una volta in `prepare()` dal seed.
 
-**`subject/`** — l'immagine da ricostruire, come tre layer allineati (`SubjectSource`):
+**`subject/`** — l'immagine da ricostruire, come layer allineati (`SubjectSource`):
 - `observed` — ciò che le fotografie d'archivio hanno registrato (bianco e nero);
-- `inferred` — ciò che il sistema crede (colore, con differenze plausibili e non documentate);
-- `data` — profondità, id di regione (per DECONSTRUCTION), id materiale.
+- `synthesis` — l'ipotesi che il sistema accetterà; `alternatives` — le altre ipotesi;
+- `data` — profondità e id di regione (la mappa epistemica).
 
-Nella milestone 1 i tre layer sono generati da `subject.frag`, un raymarcher procedurale renderizzato una volta sola, a tile. Il soggetto definitivo (ComfyUI + stima di profondità + segmentazione) riempirà gli stessi tre layer da file: nient'altro cambia.
+Oggi sono generati da `subject.frag`, un raymarcher procedurale renderizzato una volta sola, a tile, in tre composizioni (A/B/C). Il soggetto definitivo (ComfyUI + profondità + mappa epistemica dipinta) riempirà gli stessi layer da file: nient'altro cambia.
 
 **`rendering/`** — `Atlas` disegna una volta, con Canvas2D alla densità d'uscita, tutto ciò che è tipografico o diagrammatico (testimonianze, date, forme d'onda, mappe, concetti, titoli). `FragmentLayer` e `EdgeLayer` sono quad istanziati (una draw call ciascuno). `glsl.ts` risolve `#include` a build time.
 
-**`confidence/`** — `coherenceParams(k)` è l'implementazione di riferimento della legge visiva; `reconstruction.glsl` la replica. `artisticState.ts` riassume l'istante (confidence, acceptance, coherence, evidenze, relazione, quota inferita).
+**`confidence/`** — `coherenceParams(k)` è l'implementazione di riferimento della legge visiva; `reconstruction.glsl` la replica. `epistemics.ts` è il calendario per classe epistemica; `artworkState.ts` è lo stato unico dell'istante (confidence, acceptance, certainty, regioni).
 
-**`audio/`** — `audioParams(state)`: armonicità ← coerenza, pulsazione ← relazioni, densità ← evidenze, ampiezza spettrale ← quota inferita, livello (solo l'assenza è silenzio). Nella milestone 1 non c'è un motore audio: i parametri vengono scritti per frame in `control.csv` per automatizzare il sound design in una DAW.
+**`audio/`** — `audioParams(state)`: eventi discreti ← evidenza × (1 − acceptance), continuità ← acceptance, armonicità ← certainty, pulsazione ← relazioni, finzione ← quota non supportata, livello (solo l'assenza è silenzio). Non c'è ancora un motore audio: i parametri vengono scritti per frame in `control.csv` per automatizzare il sound design in una DAW.
 
 ## Il confidence system
 
@@ -105,10 +105,9 @@ La soglia di ogni cella di dropout è fissa: quando la confidence sale, i pezzi 
 `field.frag` calcola a risoluzione ridotta, per ogni punto dell'immagine:
 - dentro un frammento fotografico arrivato al suo posto → confidence del frammento (**observed**);
 - attorno ai frammenti → confidence decrescente (≤ 0.5 × frammento), con raggio che cresce con `reach`;
-- attorno a ogni inferenza → la sua confidence (bassa per costruzione), su un raggio che cresce con `reach`;
-- ovunque → un `prior` debole ("la stanza esiste").
+- l'**attenzione** (canale B) cresce dalle prove verso l'esterno con `reach`: decide cosa è visibile, non cosa è noto. La confidence di ogni regione viene dalla sua classe epistemica (vedi sotto).
 
-Il confine è irregolare (fbm) e lentamente vivo. `composite.frag` rende il layer `inferred` con la coerenza che il campo consente: la struttura si decide per cella di Voronoi, l'assenza per pixel. Il colore appare solo dove la coerenza supera ~0.5. I frammenti osservati sono disegnati sopra, nitidi: le **cuciture** tra ciò che è registrato e ciò che è creduto sono il segno dell'inferenza.
+Il confine è irregolare (fbm) e lentamente vivo. `composite.frag` rende le ipotesi con la coerenza che campo e regioni consentono. Il colore appare solo dove la coerenza supera ~0.5. I frammenti osservati sono disegnati sopra, nitidi: le **cuciture** tra ciò che è registrato e ciò che è creduto sono il segno dell'inferenza.
 
 ## Shader
 
@@ -129,6 +128,16 @@ shaders/passes/
 ```
 
 `deconstruction.glsl` arriverà con la milestone di DECONSTRUCTION (rimozione per regione dal layer `data`, ordine configurabile).
+
+## Milestone 2: ipotesi, regioni, acceptance
+
+- **Ipotesi** (`subject/hypotheses.ts`): il soggetto è renderizzato come archivio (B/N), come *sintesi* (l'ipotesi accettata) e come tre *alternative*. Ogni ipotesi è un insieme di dati: cosa c'è fuori dalla finestra, sulla parete, sul tavolo, il colore del cappotto, la direzione dello sguardo, la luce.
+- **Regioni epistemiche** (`subject/regions.ts`): ogni regione del quadro ha una classe (`observed · derived · inferred · synthetic · absent`), le tracce che la sostengono e, se c'è, la traccia da cui la sintesi l'ha tratta.
+- **Calendario epistemico** (`confidence/epistemics.ts`): per classe, quanta acceptance a fine INFERENCE, quando è accettata in SYNTHESIS (le assenti per ultime), quando viene rilasciata e ritirata in DECONSTRUCTION (le sintetiche per prime, le osservate per ultime).
+- **Compositing** (`passes/composite.frag`): per ogni pixel, regione → confidence, acceptance, presenza. Le ipotesi sono campi di preferenza morbidi: con acceptance bassa si sovrappongono, poi si alternano, infine ne resta una. L'assenza non è nero: le proposte sono leggibili, indeterminata è la scelta. La risposta fotografica (profondità di campo, alone, aberrazione laterale) cresce con l'acceptance.
+- **Attenzione ≠ conoscenza** (`passes/field.frag`): una regione è visibile quando il sistema la considera, non quando la conosce.
+- **ArtworkState** (`confidence/artworkState.ts`): unico stato temporale; confidence, acceptance, certainty, stato per regione. Immagine e `audio/audioState.ts` ne derivano. I frammenti riscritti dalla sintesi smettono di contare come prova.
+- **Loop**: la traccia `residue` del dataset è la prima acquisita e l'ultima a sopravvivere; torna alla sua posizione di catalogo.
 
 ## Rendering deterministico
 

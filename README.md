@@ -6,7 +6,7 @@ SINTESI è un sistema audiovisivo generativo che ricostruisce progressivamente l
 
 Formato 9:16 verticale · master 2160 × 3840 · 24 fps · durata ≈ 3′30″ · loop.
 
-> **Stato: milestone 1** — prototipo di 25 secondi `ARCHIVE → CORRELATION → INFERENCE`, con confidence system, shader di ricostruzione, rendering deterministico e pipeline di export. SYNTHESIS e DECONSTRUCTION sono dichiarate nella timeline ma non ancora implementate.
+> **Stato: milestone 2 (studi)** — l'arco completo esiste: ARCHIVE → CORRELATION → INFERENCE → SYNTHESIS → DECONSTRUCTION → loop, con ipotesi alternative, regioni epistemiche, acceptance e smontaggio genealogico. Il soggetto è ancora procedurale: la sintesi non è una fotografia (vedi [ARTISTIC_QA.md](ARTISTIC_QA.md) e [docs/MILESTONE_2_REVIEW.md](docs/MILESTONE_2_REVIEW.md)).
 
 ---
 
@@ -26,8 +26,9 @@ npm install
 npm run dev            # riproduzione live, qualità DEV → http://127.0.0.1:5173
 ```
 
-Parametri URL: `?quality=dev|preview|final` · `?seed=1987` · `?timeline=prototype|full` ·
-`?view=work|subject-observed|subject-inferred|subject-data|field` (viste diagnostiche).
+Parametri URL: `?quality=dev|preview|final` · `?seed=1987` · `?timeline=prototype|study|full` ·
+`?composition=A|B|C` (ritratto · ambiente · figura + ambiente, default C) · `?typography=none|minimal` ·
+`?view=work|epistemic|field|subject-observed|subject-synthesis|subject-alt1…3|subject-data` (viste diagnostiche).
 
 Tastiera (solo sviluppo/installazione, nessuna UI a schermo): `spazio` pausa · `←/→` ±1 s · `1–5` salta alla fase · `d` stato interno · `f` fullscreen.
 
@@ -37,7 +38,7 @@ Tastiera (solo sviluppo/installazione, nessuna UI a schermo): `spazio` pausa · 
 npm run render:dev       # 540 × 960, veloce
 npm run render:preview   # 1080 × 1920
 npm run render:final     # 2160 × 3840 + master ProRes 422 HQ
-npm run render -- --quality=preview --seed=7 --timeline=full --from=10 --to=20 --gpu
+npm run render -- --quality=preview --seed=7 --timeline=full --composition=C --from=10 --to=20 --gpu
 npm run snapshot -- --t=4,12,21 --quality=preview   # fotogrammi singoli per revisione
 npm run export -- renders/<nome>                     # (ri)assembla il video dai frame
 ```
@@ -76,11 +77,11 @@ sintesi/
 │   ├── config.ts       qualità DEV/PREVIEW/FINAL, renderScale, seed
 │   ├── timeline/       timeline dichiarativa (prototype, full)
 │   ├── evidence/       modello concettuale: Evidence, Concept, Inference
-│   ├── confidence/     confidence → parametri visivi; stato artistico globale
+│   ├── confidence/     legge della coerenza, calendario epistemico, ArtworkState
 │   ├── correlation/    grafo semantico, layout deterministico
 │   ├── inference/      inferenze derivate dal grafo
 │   ├── data/           archivio demo e caricamento del dataset
-│   ├── subject/        il soggetto da ricostruire (demo procedurale)
+│   ├── subject/        il soggetto: ipotesi (sintesi + alternative), regioni epistemiche
 │   ├── rendering/      atlas tipografico, layer, include GLSL
 │   ├── audio/          mappatura stato → parametri sonori (architettura)
 │   └── core/           Engine, coreografia (funzione pura del tempo), player live
@@ -95,3 +96,7 @@ sintesi/
 - [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md) — componenti, flusso dati, shader, confidence, determinismo
 - [PRODUCTION.md](PRODUCTION.md) — dataset, asset generativi, master
 - [EXHIBITION.md](EXHIBITION.md) — installazione, hardware, loop, fallback
+- [ARTISTIC_QA.md](ARTISTIC_QA.md) — domande di verifica artistica a ogni milestone
+- [docs/MILESTONE_2_PLAN.md](docs/MILESTONE_2_PLAN.md) · [docs/MILESTONE_2_REVIEW.md](docs/MILESTONE_2_REVIEW.md)
+- [docs/CAPTURE_PROTOCOL.md](docs/CAPTURE_PROTOCOL.md) — come costruire l'archivio reale
+- [docs/AI_MATERIAL_WORKFLOW.md](docs/AI_MATERIAL_WORKFLOW.md) — ComfyUI e mappe, locale e offline
