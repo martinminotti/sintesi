@@ -3,6 +3,7 @@ import { WORLD, type EngineConfig } from '../config';
 import type { Dataset } from '../evidence/types';
 import type { Timeline } from '../timeline/timeline';
 import { createProceduralSubject, fullscreenTriangle } from '../subject/ProceduralSubject';
+import { focusFromData, loadFileSubject } from '../subject/FileSubject';
 import type { SubjectSource } from '../subject/SubjectSource';
 import { FULLSCREEN_VERT, glsl } from '../rendering/glsl';
 import { Atlas } from '../rendering/Atlas';
@@ -13,7 +14,7 @@ import { computeArtworkState, type ArtworkState } from '../confidence/artworkSta
 import { CLASS_CONFIDENCE, CLASS_ORDER, MAX_REGIONS, REGIONS } from '../subject/regions';
 import { datasetHash } from '../data/loadDataset';
 
-export type EngineView = 'work' | 'subject-observed' | 'subject-synthesis' | 'subject-alt1' | 'subject-alt2' | 'subject-alt3' | 'subject-data' | 'field' | 'epistemic';
+export type EngineView = 'work' | 'subject-observed' | 'subject-synthesis' | 'subject-alt1' | 'subject-alt2' | 'subject-alt3' | 'subject-data' | 'field' | 'epistemic' | 'subject-data-raw';
 
 /** Focus distance (m) of the photographic response, per composition. */
 const FOCUS: Record<string, number> = { A: 0.86, B: 1.95, C: 1.43 };
@@ -77,7 +78,9 @@ export class Engine {
       document.fonts.load(`400 32px "IBM Plex Mono"`),
     ]);
 
-    this.subject = createProceduralSubject(this.renderer, { width, height, seed, steps: quality.subjectSteps, supersample: quality.subjectSupersample, composition: this.config.composition });
+    this.subject = this.config.subject
+      ? await loadFileSubject(`archive/synthesis/${this.config.subject}`, width, height)
+      : createProceduralSubject(this.renderer, { width, height, seed, steps: quality.subjectSteps, supersample: quality.subjectSupersample, composition: this.config.composition });
 
     const ppu = width / WORLD.width;
     this.atlas = new Atlas(ppu);
@@ -125,7 +128,7 @@ export class Engine {
         uAcceptance: { value: new Array(MAX_REGIONS).fill(0) },
         uPresence: { value: new Array(MAX_REGIONS).fill(0) },
         uPhoto: { value: 0 },
-        uFocus: { value: FOCUS[this.config.composition] ?? 1.4 },
+        uFocus: { value: focusFromData(this.subject) ?? FOCUS[this.config.composition] ?? 1.4 },
         uTime: { value: 0 },
         uSeed: { value: seed % 1000 },
         uTaps: { value: quality.blurTaps },
@@ -228,7 +231,7 @@ export class Engine {
       this.postMat.uniforms.uFrame.value = Math.round(t * this.config.fps);
       r.render(this.postScene, this.screenCamera);
     } else {
-      const tex = { 'subject-observed': this.subject.observed, 'subject-synthesis': this.subject.synthesis, 'subject-alt1': this.subject.alternatives[0], 'subject-alt2': this.subject.alternatives[1], 'subject-alt3': this.subject.alternatives[2], 'subject-data': this.subject.data, field: this.fieldRT.texture, epistemic: this.subject.data }[view];
+      const tex = { 'subject-observed': this.subject.observed, 'subject-synthesis': this.subject.synthesis, 'subject-alt1': this.subject.alternatives[0], 'subject-alt2': this.subject.alternatives[1], 'subject-alt3': this.subject.alternatives[2], 'subject-data': this.subject.data, field: this.fieldRT.texture, epistemic: this.subject.data, 'subject-data-raw': this.subject.data }[view];
       this.debugMat.uniforms.uTex.value = tex;
       this.debugMat.uniforms.uMode.value = view === 'subject-data' ? 1 : view === 'field' ? 2 : view === 'epistemic' ? 3 : 0;
       r.render(this.debugScene, this.screenCamera);

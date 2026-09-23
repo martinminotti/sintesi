@@ -14,7 +14,7 @@ mkdirSync(out, { recursive: true });
 const extra: Record<string, string> = {};
 if (args.view) extra.view = args.view;
 if (args.views) extra.view = args.views.split(',')[0];
-for (const k of ['composition', 'typography']) if (args[k]) extra[k] = args[k];
+for (const k of ['composition', 'typography', 'subject']) if (args[k]) extra[k] = args[k];
 const session = await openEngine({
   quality: args.quality ?? 'dev',
   seed: args.seed ? Number(args.seed) : undefined,

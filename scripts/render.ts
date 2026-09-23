@@ -21,7 +21,7 @@ const seed = args.seed !== undefined ? Number(args.seed) : undefined;
 const t0 = Date.now();
 
 const extra: Record<string, string> = {};
-for (const k of ['composition', 'typography']) if (args[k]) extra[k] = args[k];
+for (const k of ['composition', 'typography', 'subject']) if (args[k]) extra[k] = args[k];
 const session = await openEngine({ quality, seed, timeline: args.timeline, gpu: args.gpu === 'true', extraParams: extra });
 const { info } = session;
 const name = args.out ?? `${info.timeline}-${info.quality}-seed${info.seed}${args.composition ? '-' + args.composition : ''}`;

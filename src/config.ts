@@ -43,6 +43,8 @@ export interface EngineConfig {
   composition: Composition;
   /** 'none': no titles, labels or concept names (the default); 'minimal': milestone-1 typography. */
   typography: Typography;
+  /** A synthesis session folder in archive/synthesis/ (e.g. 'session-01'); absent: the procedural demo subject. */
+  subject?: string;
   quality: QualityPreset;
   fps: number;
   timeline: string;
@@ -50,12 +52,13 @@ export interface EngineConfig {
   height: number;
 }
 
-export function makeConfig(opts: { seed?: number; quality?: QualityName; timeline?: string; composition?: Composition; typography?: Typography } = {}): EngineConfig {
+export function makeConfig(opts: { seed?: number; quality?: QualityName; timeline?: string; composition?: Composition; typography?: Typography; subject?: string } = {}): EngineConfig {
   const quality = QUALITY[opts.quality ?? 'dev'];
   return {
     seed: opts.seed ?? DEFAULT_SEED,
     composition: opts.composition ?? 'C',
     typography: opts.typography ?? 'none',
+    subject: opts.subject,
     quality,
     fps: MASTER.fps,
     timeline: opts.timeline ?? 'prototype',

@@ -26,6 +26,7 @@ const config = makeConfig({
   timeline: params.get('timeline') ?? undefined,
   composition: (params.get('composition') as Composition) ?? undefined,
   typography: (params.get('typography') as Typography) ?? undefined,
+  subject: params.get('subject') ?? undefined,
 });
 const view = (params.get('view') ?? 'work') as EngineView;
 
@@ -49,6 +50,48 @@ const api = {
   control: (frame: number) => engine.artworkState(frame / config.fps),
   probeCoherence: () => engine.probeCoherence(),
   setView: (v: EngineView) => { engine.view = v; },
+  /**
+   * The subject's layers in the file format of a synthesis session (for tests
+   * of the file pipeline): PNG data URLs keyed by file name.
+   */
+  exportSubject: () => {
+    const grab = (view: EngineView): string => { engine.view = view; engine.renderAt(0); return canvas.toDataURL('image/png'); };
+    const files: Record<string, string> = {
+      'observed.png': grab('subject-observed'),
+      'synthesis.png': grab('subject-synthesis'),
+      'alt-1.png': grab('subject-alt1'),
+      'alt-2.png': grab('subject-alt2'),
+      'alt-3.png': grab('subject-alt3'),
+    };
+    engine.view = 'subject-data-raw';
+    engine.renderAt(0);
+    const w = canvas.width, h = canvas.height;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently: true })!;
+    ctx.drawImage(canvas, 0, 0);
+    const src = ctx.getImageData(0, 0, w, h).data;
+    const layer = (f: (r: number, id: number) => number): string => {
+      const out = ctx.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        const v = f(src[i * 4], Math.round((src[i * 4 + 1] / 255) * 16));
+        out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
+        out.data[i * 4 + 3] = 255;
+      }
+      const o = document.createElement('canvas');
+      o.width = w; o.height = h;
+      o.getContext('2d')!.putImageData(out, 0, 0);
+      return o.toDataURL('image/png');
+    };
+    files['depth.png'] = layer((r) => 255 - r);
+    for (const [name, id] of Object.entries({ view: 3, wall: 11, vessel: 5, coat: 6, gaze: 12 })) {
+      files[`mask-${name}.png`] = layer((_, rid) => (rid === id ? 255 : 0));
+    }
+    // The person: skin, hair, shirt (coat and eyes have their own masks, which win).
+    files['mask-figure.png'] = layer((_, rid) => ([7, 8, 13, 6, 12].includes(rid) ? 255 : 0));
+    engine.view = 'work';
+    return files;
+  },
   /** Luminance of a frame on a coarse 36 × 64 grid (for seam and stability checks). */
   thumbnail: (frame: number) => {
     engine.renderAt(frame / config.fps);
