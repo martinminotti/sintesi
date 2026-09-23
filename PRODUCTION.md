@@ -50,17 +50,12 @@ Regole di autorialità:
 
 ## 2. Il soggetto sintetico (asset generativi)
 
-La scena di SYNTHESIS è prodotta localmente e poi *consegnata al sistema*, che decide quanto mostrarne. Flusso consigliato, tutto open source:
+1. **Raccolta** secondo [docs/CAPTURE_PROTOCOL.md](docs/CAPTURE_PROTOCOL.md): cosa è autentico, cosa è costruito, formati, maschere. Verifica con `python tools/intake.py archive/intake`.
+2. **Sessione ComfyUI** secondo [docs/COMFYUI_SESSION_01.md](docs/COMFYUI_SESSION_01.md), sulla macchina dell'autore, locale e offline: la fotografia P1 rigenerata interamente a bassa intensità, le decisioni del sistema per regione, tre alternative, profondità. Uscita in `archive/synthesis/session-01/`.
+3. **Nell'engine:** `?subject=session-01` (live) o `--subject=session-01` (render). Il soggetto procedurale viene sostituito dai file; nient'altro cambia.
+4. Ogni iterazione è un nuovo `session_NN.json`, mai un ritocco a mano delle immagini: il processo deve restare riproducibile.
 
-1. **Composizione di riferimento.** Fotografare (o disegnare) la composizione 9:16: la figura, la finestra, il tavolo. Serve per controllare luce e inquadratura; il registro è low-key, luce naturale laterale, nessuna estetica "AI".
-2. **Generazione — ComfyUI** (locale, gratuito) con un modello open (famiglia SDXL/Flux con licenza compatibile), ControlNet (profondità/linee) dalla composizione di riferimento, IP-Adapter dai frammenti d'archivio dell'autore. Risoluzione target 2160 × 3840 (generare più piccolo e fare upscale con un modello open, es. 4x-UltraSharp/ESRGAN).
-3. **Due versioni della stessa scena.** `observed` (convertita in bianco e nero, fedele ai frammenti) e `inferred` (a colori, con 3–5 differenze plausibili e non documentate: un oggetto in più, un dettaglio architettonico spostato, un riflesso impossibile). Le differenze sono la drammaturgia delle cuciture: vanno scelte, non lasciate al caso.
-4. **Mappe.** Profondità con Depth Anything v2 (open) e segmentazione con SAM 2 (open) → `data.png` (R profondità, G regione/8: 1 ambiente, 2 sfondo, 3 oggetti, 4 corpo, 5 volto, 6 identità).
-5. **Ritagli d'archivio.** I `crop` del dataset devono cadere su dettagli della scena `observed` (un occhio, un orecchio, uno spigolo): sono le prove.
-
-Salvare in `archive/synthesis/{observed,inferred,data}.png` e implementare un `SubjectSource` da file (milestone 2). Runway o altri servizi a pagamento: solo se un risultato non è ottenibile localmente, e solo in produzione — mai a runtime.
-
-GPU per la generazione: una GPU consumer con ≥ 8 GB di VRAM è sufficiente con modelli quantizzati. In assenza, una sessione cloud a ore (poche ore di GPU, < €20) rientra nel budget.
+Nessun servizio a pagamento è necessario. GPU: una consumer con ≥ 8 GB di VRAM, oppure poche ore di GPU a noleggio (< € 20).
 
 ## 3. Aggiornare il progetto
 
@@ -81,5 +76,5 @@ npm run render:final
 Output in `renders/full-final-seed1987/` (con `--timeline=full`): frame PNG, `…mov` ProRes 422 HQ (archivio), `…mp4` H.264 (esposizione), `manifest.json`, `control.csv`.
 
 - Con SwiftShader (default) il render è riproducibile bit per bit ovunque, ma lento a 4K; con `--gpu` è molto più rapido. Si può renderizzare a pezzi (`--from/--to`, frame numerati per tempo assoluto) e assemblare con `npm run export -- renders/<nome>`.
-- **Audio.** `control.csv` contiene per ogni frame confidence, coherence, relazione, quota inferita e i parametri audio derivati. Importarlo come automazione in Logic Pro (o Reaper/Ardour, gratuiti): la perdita di certezza visiva deve corrispondere alla perdita di struttura sonora. Il mix stereo (48 kHz, 24 bit) si unisce al master con FFmpeg: `ffmpeg -i master.mov -i mix.wav -c:v copy -c:a pcm_s24le master_av.mov`.
+- **Audio.** Il suono è generato dall'opera stessa (`npm run render` lo produce insieme ai fotogrammi, `npm run audio` da solo), dallo stesso stato dell'immagine. Le registrazioni reali entrano per nome di file in `archive/audio/` (vedi TECHNICAL_ARCHITECTURE, *Suono*). Una DAW (Logic Pro, Reaper) serve solo per l'ascolto critico e per eventuali correzioni di livello: nessun elemento sonoro va aggiunto a mano, altrimenti il suono smette di derivare dal processo. `control.csv` resta disponibile.
 - **Finitura opzionale** in DaVinci Resolve (gratuito): solo controllo, nessuna correzione creativa che l'engine non possa riprodurre.

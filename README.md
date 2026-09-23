@@ -42,6 +42,7 @@ npm run render:final     # 2160 × 3840 + master ProRes 422 HQ
 npm run render -- --quality=preview --seed=7 --timeline=full --composition=C --from=10 --to=20 --gpu
 npm run snapshot -- --t=4,12,21 --quality=preview   # fotogrammi singoli per revisione
 npm run export -- renders/<nome>                     # (ri)assembla il video dai frame
+npm run audio -- --timeline=full                     # solo il suono (WAV 48 kHz / 24 bit)
 ```
 
 Ogni render produce in `renders/<timeline>-<qualità>-seed<seed>/`:
@@ -52,7 +53,8 @@ Ogni render produce in `renders/<timeline>-<qualità>-seed<seed>/`:
 | `<nome>.mp4` | H.264 (preview/esposizione) |
 | `<nome>.mov` | ProRes 422 HQ (solo `final`, master d'archivio) |
 | `manifest.json` | seed, qualità, dataset hash, commit, renderer, SHA-256 di ogni frame |
-| `control.csv` | stato artistico per frame (confidence, coherence, …) per il sound design |
+| `audio.wav` | il suono, derivato dallo stesso stato (unito nei video) |
+| `control.csv` | stato per fotogramma (confidence, acceptance, certainty, …) |
 
 Senza `--gpu` il rendering usa SwiftShader (CPU): più lento, ma **identico bit per bit su qualunque macchina**.
 

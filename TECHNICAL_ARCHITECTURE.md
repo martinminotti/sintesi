@@ -72,7 +72,7 @@ Oggi sono generati da `subject.frag`, un raymarcher procedurale renderizzato una
 
 **`confidence/`** — `coherenceParams(k)` è l'implementazione di riferimento della legge visiva; `reconstruction.glsl` la replica. `epistemics.ts` è il calendario per classe epistemica; `artworkState.ts` è lo stato unico dell'istante (confidence, acceptance, certainty, regioni).
 
-**`audio/`** — `audioParams(state)`: eventi discreti ← evidenza × (1 − acceptance), continuità ← acceptance, armonicità ← certainty, pulsazione ← relazioni, finzione ← quota non supportata, livello (solo l'assenza è silenzio). Non c'è ancora un motore audio: i parametri vengono scritti per frame in `control.csv` per automatizzare il sound design in una DAW.
+**`audio/`** — il suono non è composto sopra l'immagine: è derivato dalla stessa coreografia. `score.ts` legge, fotogramma per fotogramma, l'`ArtworkState` e rileva gli eventi (acquisizione di una traccia, nascita di una relazione, un frammento che torna al suo posto, una fonte che riaffiora, una prova che si spegne). `scripts/lib/renderAudio.ts` li rende in un WAV 48 kHz / 24 bit, deterministico dal seed. Vedi la sezione *Suono*.
 
 ## Il confidence system
 
@@ -139,6 +139,25 @@ shaders/passes/
 - **ArtworkState** (`confidence/artworkState.ts`): unico stato temporale; confidence, acceptance, certainty, stato per regione. Immagine e `audio/audioState.ts` ne derivano. I frammenti riscritti dalla sintesi smettono di contare come prova.
 - **Loop**: la traccia `residue` del dataset è la prima acquisita e l'ultima a sopravvivere; torna alla sua posizione di catalogo.
 
+## Suono
+
+Un solo principio: **più coerenza, meno evidenza.**
+
+| strato | deriva da | comportamento |
+|---|---|---|
+| fruscio d'archivio | tracce presenti × (1 − quadro) | il supporto dell'archivio; sparisce quando c'è un'immagine |
+| transienti | acquisizione di ogni traccia | piccoli eventi meccanici; netti se la traccia è certa, smussati se incerta; posizionati dove la traccia appare |
+| ASSENZA | acquisizione di un'assenza | **un silenzio**: il fruscio trattiene il respiro per un istante |
+| relazioni | nascita di ogni relazione | coppie di toni appena udibili; quinta se la relazione è forte, battimenti se è debole |
+| arrivo | un frammento torna al suo posto | un tonfo sordo, breve |
+| proposte | INFERENCE, secondo tempo | grani di rumore filtrato che cercano; più densi quanto più il sistema propone |
+| stanza | quadro × acceptance; continuità ← certainty | granulare quando la certezza è bassa, continua e piena quando è accettata; una risonanza grave appare solo con l'acceptance |
+| traccia firma | acceptance × presenza della regione *fuori* | entra quando la vista viene decisa: il suono di un altro luogo riempie la stanza |
+| genealogia | DECONSTRUCTION | la traccia firma riaffiora nella sua forma propria (piccola, secca, da cassetta); le prove si spengono con transienti rovesciati |
+| fine | assenza | silenzio |
+
+Le registrazioni reali sostituiscono il materiale demo per nome di file in `archive/audio/` (esclusa da git): `<ID>.wav` per una traccia, `REC_07.wav` per la traccia firma, `room_tone.wav` per la stanza. Master a −23 LUFS integrati, picco ≤ −1 dBFS, ampia dinamica. `npm run render` produce video e audio nella stessa sessione, dallo stesso stato; `export` li unisce (AAC nell'MP4, PCM 24 bit nel ProRes). `tests/audio.test.ts` verifica determinismo, silenzio finale, l'assenza come silenzio e che la stanza accettata sia più piena e più stabile di quella incerta.
+
 ## Rendering deterministico
 
 `seed + dataset + configurazione ⇒ sempre lo stesso risultato.`
@@ -148,6 +167,7 @@ shaders/passes/
 - Hash GLSL aritmetici (niente `fract(sin(dot()))`, che varia tra GPU).
 - `renderAt(t)` è una funzione pura: il frame N è identico se renderizzato in sequenza, fuori ordine o in una sessione nuova (`npm run validate` lo verifica).
 - Il render offline usa per default SwiftShader (rasterizzazione su CPU): stesso output bit per bit su qualunque macchina. `--gpu` è più veloce ma può differire di un LSB tra GPU diverse.
+- Il testo è misurato sempre alla densità del master (240 px per unità): il catalogo e la mappa semantica sono identici a qualunque qualità (verificato DEV = PREVIEW).
 - Il `manifest.json` di ogni render registra seed, qualità, commit, stato del working tree, hash del dataset, renderer e SHA-256 di ogni frame: due versioni dell'opera si confrontano frame per frame.
 
 ## Modalità di qualità
