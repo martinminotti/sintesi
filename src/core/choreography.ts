@@ -62,6 +62,8 @@ export interface Frame {
   regions: RegionState[];
   /** Photographic response of the picture (optics, halation), follows acceptance. */
   photo: number;
+  /** INFERENCE, second tempo: the hypotheses are proposed in turn rather than superposed. */
+  proposal: number;
   camera: { zoom: number };
 }
 
@@ -266,6 +268,7 @@ export class Choreography {
 
     const pos = new Map<string, Vec2>();
     const conf = new Map<string, number>();
+    const overwritten = new Map<string, number>();
 
     // Concepts: named in 'minimal' typography; otherwise invisible centres the relations converge on.
     const conceptStates: ElementState[] = [];
@@ -292,6 +295,7 @@ export class Choreography {
         ? lerp(RESIDUE_K, ev.confidence, easeOutQuint(this.win(t, it.acquire, acqDur * 1.6)))
         : ev.confidence * easeOutQuint(this.win(t, it.acquire, acqDur));
       let visibility = 1;
+      let overwrite = 1; // 0 once the synthesis has rewritten the trace
       const drift = 0.05 * (1 - ev.confidence);
       let x = it.archivePos.x + drift * Math.sin(t * 0.35 + it.seed);
       let y = it.archivePos.y + drift * Math.cos(t * 0.27 + it.seed * 1.3);
@@ -319,6 +323,12 @@ export class Choreography {
           w = lerp(w, it.target.w, m);
           h = lerp(h, it.target.h, m);
           k = lerp(k, ev.confidence, m);
+          // Late in INFERENCE the system looks away from the evidence of the face
+          // for a moment: underneath, it is trying other faces.
+          if (it.isPhoto && it.concept === 'PERSON') {
+            const away = smoothstep(0.5, 0.6, uI) * (1 - smoothstep(0.76, 0.88, uI));
+            visibility = 1 - 0.92 * away;
+          }
         } else {
           // Everything else is absorbed into what it supports.
           const r = hashFloat(this.seed, 'absorb', ev.id);
@@ -334,7 +344,8 @@ export class Choreography {
       if (S) {
         if (it.isPhoto) {
           // The synthesis rewrites even the evidence: the seams heal.
-          visibility = 1 - this.w(uS, 0.22 + 0.1 * hashFloat(this.seed, 'overwrite', ev.id), 0.58);
+          overwrite = 1 - this.w(uS, 0.22 + 0.1 * hashFloat(this.seed, 'overwrite', ev.id), 0.58);
+          visibility = overwrite;
         } else if (ev.type === 'absence') {
           // A gap is closed when its region is decided.
           k *= 1 - this.w(uS, SCHEDULE.absent.synthesis[0], SCHEDULE.absent.synthesis[1]);
@@ -344,7 +355,8 @@ export class Choreography {
       if (D) {
         if (it.isPhoto) {
           // Once what was chosen has collapsed, the evidence is visible again, alone.
-          visibility = Math.max(visibility, this.w(uD, 0.26, 0.4));
+          overwrite = Math.max(overwrite, this.w(uD, 0.26, 0.4));
+          visibility = overwrite;
           if (isResidue) {
             // The last trace goes back to the archive: it opens the next cycle.
             const m = this.w(uD, 0.8, 0.98);
@@ -382,6 +394,7 @@ export class Choreography {
 
       pos.set(ev.id, { x, y });
       conf.set(ev.id, k);
+      overwritten.set(ev.id, overwrite);
       evidenceStates.push({ id: ev.id, kind: 'evidence', x, y, w, h, confidence: k, k, source: it.isPhoto ? 1 : 0, uv: it.uv, seed: it.seed, visibility });
 
       if (it.isPhoto && labels) {
@@ -443,12 +456,12 @@ export class Choreography {
         const m = this.win(t, I.start + len * (0.02 + 0.22 * (1 - it.ev.semanticWeight)), len * 0.3);
         const arrival = smoothstep(0.85, 1.0, m);
         if (arrival <= 0) continue;
-        const visibility = elements.find((e) => e.id === it.ev.id)?.visibility ?? 1;
+        const visibility = overwritten.get(it.ev.id) ?? 1;
         anchors.push({ rect: it.ev.visualProperties.crop, confidence: it.ev.confidence, arrival, visibility });
       }
     }
     // Attention extends from the evidence over the whole of INFERENCE.
-    const reach = I ? Math.pow(smoothstep(0.1, 1.0, uI), 0.9) * Math.pow(smoothstep(0.1, 0.45, uI), 0.5) : 0;
+    const reach = I ? smoothstep(0.08, 0.97, uI) : 0;
 
     // Photographic response follows the acceptance of the picture as a whole.
     const meanAcceptance = regions.reduce((s, r) => s + r.acceptance, 0) / regions.length;
@@ -456,7 +469,9 @@ export class Choreography {
 
     const zoom = 1 + 0.03 * easeInOutCubic(tl.progress.ARCHIVE) * (1 - easeInOutCubic(uC));
 
-    return { timeline: tl, elements, edges, field: { anchors, reach }, regions, photo, camera: { zoom } };
+    const proposal = I ? smoothstep(0.35, 0.85, uI) : 0;
+
+    return { timeline: tl, elements, edges, field: { anchors, reach }, regions, photo, proposal, camera: { zoom } };
   }
 
   /** Evidence items, for inspection and tests. */

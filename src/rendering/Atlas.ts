@@ -37,14 +37,20 @@ export class Atlas {
     this.pending.push({ key, w, h, draw });
   }
 
-  /** Measure text in world units (for sizing entries before drawing). */
+  /**
+   * Measure text in world units. Always at the master's density (240 px per unit),
+   * whatever the quality: the layout of the work must not depend on the resolution
+   * it is rendered at. A 2 % margin absorbs hinting differences when drawing.
+   */
   measure(text: string, font: string, sizeWorld: number, letterSpacingEm = 0): number {
+    const REF = 240;
     const ctx = document.createElement('canvas').getContext('2d')!;
-    const px = sizeWorld * this.ppu;
+    const px = sizeWorld * REF;
     ctx.font = font.replace('{px}', `${px}px`);
     (ctx as unknown as { letterSpacing: string }).letterSpacing = `${letterSpacingEm * px}px`;
     // Canvas letter-spacing also trails the last glyph: remove it so boxes stay centred.
-    return (ctx.measureText(text).width - letterSpacingEm * px) / this.ppu;
+    const w = (ctx.measureText(text).width - letterSpacingEm * px) / REF;
+    return Math.ceil(w * 1.02 * 100) / 100;
   }
 
   build(): void {

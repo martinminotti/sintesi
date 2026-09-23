@@ -128,6 +128,7 @@ export class Engine {
         uAcceptance: { value: new Array(MAX_REGIONS).fill(0) },
         uPresence: { value: new Array(MAX_REGIONS).fill(0) },
         uPhoto: { value: 0 },
+        uProposal: { value: 0 },
         uFocus: { value: focusFromData(this.subject) ?? FOCUS[this.config.composition] ?? 1.4 },
         uTime: { value: 0 },
         uSeed: { value: seed % 1000 },
@@ -211,6 +212,7 @@ export class Engine {
       cu.uPresence.value[rs.id] = rs.presence;
     }
     cu.uPhoto.value = frame.photo;
+    cu.uProposal.value = frame.proposal;
 
     // 2. Scene: inferred picture, relationships, evidence.
     this.compositeMesh.visible = inference;

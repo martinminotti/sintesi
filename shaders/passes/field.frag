@@ -50,7 +50,8 @@ void main() {
       c = max(c, conf.y * conf.x * 0.5 * exp(-max(d + wob, 0.0) / L));
     }
   }
-  float R = uReach * 1.15;
-  float attention = uReach >= 0.999 ? 1.0 : 1.0 - smoothstep(R * 0.4, R, nearest + wob * 1.5);
+  // Attention reaches the farthest corners only at the end of INFERENCE.
+  float R = uReach * 0.62;
+  float attention = uReach >= 0.999 ? 1.0 : 1.0 - smoothstep(R * 0.25, R, nearest + wob * 1.5);
   outColor = vec4(clamp(c, 0.0, 1.0), observed, attention, 1.0);
 }

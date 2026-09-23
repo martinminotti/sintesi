@@ -26,6 +26,8 @@ uniform float uConfidence[MAX_REGIONS];
 uniform float uAcceptance[MAX_REGIONS];
 uniform float uPresence[MAX_REGIONS];
 uniform float uPhoto;
+/** INFERENCE, second tempo: 0 = the hypotheses are only superposed, 1 = they are proposed in turn. */
+uniform float uProposal;
 uniform float uFocus;
 uniform float uTime;
 uniform float uSeed;
@@ -69,19 +71,18 @@ void main() {
   float floorK = uConfidence[region] <= 0.0 ? 0.55 : 0.14;
   Coherence C = coherence(max(k, floorK));
 
-  // Displacement: uncertain structure drifts; accepted structure is still.
-  vec2 cellCenter;
-  vec3 vor = voronoi(w * 2.4 + seedOffset(uSeed), cellCenter);
-  vec2 offset = cellSearch(vor.xy, C.instability, uTime, uSeed) * C.fragmentation * 0.6;
-  vec2 sw = displace(w - offset, C.displacement * 3.0, 0.9, uTime * (0.06 + 0.25 * C.instability), uSeed);
+  // Displacement: uncertain structure drifts, continuously; accepted structure is still.
+  // (No cells here: in the picture the algorithm must not be visible.)
+  vec2 sw = displace(w, C.displacement * 3.0 + C.fragmentation * 0.5, 0.9, uTime * (0.06 + 0.25 * C.instability), uSeed);
   vec2 uv = sw / WORLD;
 
   // Hypotheses: soft fields of preference. Low acceptance → a superposition;
   // rising acceptance → proposals take turns; full acceptance → one picture.
   vec2 o = seedOffset(uSeed + 17.0);
-  float rate = 0.03 + 0.2 * (1.0 - accept);
-  // Even before anything is accepted, the system makes proposals.
-  float sharp = mix(2.6, 10.0, accept);
+  // First the alternatives are only superposed; then they are proposed in turn,
+  // faster and faster; acceptance finally keeps one.
+  float rate = 0.02 + 0.24 * uProposal * (1.0 - accept);
+  float sharp = mix(0.8, 3.2, uProposal) + 7.0 * accept;
   float bias = 7.0 * accept * accept;
   float s[4];
   s[0] = gnoise(w * 0.45 + o + vec2(0.0, uTime * rate)) + bias;
@@ -112,9 +113,11 @@ void main() {
             + hypothesisLod(2, uv, 6.0) * wt[2] / wsum + hypothesisLod(3, uv, 6.0) * wt[3] / wsum;
   col = noiseFill(col, mean, C.noise, w * 7.0, uTime * C.instability, uSeed);
   col = quantizeLevels(col, C.levels, gl_FragCoord.xy, uSeed);
-  float known = cellKnown(vor.xy, C.dropout * 0.7, uSeed);
+  // Where nothing at all is known, only the vaguest memory of the scene: soft, not tiled.
+  float field = fbm(w * 0.7 + seedOffset(uSeed + 3.0) + uTime * 0.02, 4) * 0.5 + 0.5;
+  float known = smoothstep(C.dropout * 0.7 - 0.12, C.dropout * 0.7 + 0.12, field);
   vec3 ghost = vec3(dot(mean, vec3(0.2126, 0.7152, 0.0722)));
-  col = mix(ghost, col, mix(1.0, known, smoothstep(0.0, 0.35, vor.z)));
+  col = mix(ghost, col, known);
 
   // Colour was never archived: it appears only as the system commits to it.
   float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
