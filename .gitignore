@@ -6,3 +6,16 @@ renders/*
 *.log
 .vite/
 __pycache__/
+
+# Personal material of the author — NEVER in this (public) repository.
+# The engine reads it locally; see docs/CAPTURE_PROTOCOL.md §10.
+archive/intake/
+archive/private/
+archive/synthesis/
+archive/photographs/*
+archive/textures/*
+archive/text/*
+archive/audio/*
+archive/locations/*
+archive/metadata/dataset.json
+!archive/*/.gitkeep
