@@ -1,22 +1,27 @@
 import type * as THREE from 'three';
 
 /**
- * The image the system is reconstructing, as three aligned layers.
+ * The picture the system is reconstructing, as aligned layers.
  *
- *   observed — what the archive photographs recorded (grayscale).
- *   inferred — the system's belief about the whole scene (colour).
- *   data     — R: linear depth, G: region id / 8, B: material id / 16.
+ *   observed      what the archive photographs recorded (black and white)
+ *   synthesis     the hypothesis the system will accept
+ *   alternatives  other hypotheses, held while uncertainty is still shown
+ *   data          R: linear depth (/4 m) · G: region id / 16
  *
  * The procedural demo subject fills these on the GPU. A produced subject
- * (ComfyUI image + depth estimate + segmentation) will fill them from files.
+ * (ComfyUI image + variants + depth + painted epistemic map) fills them from files.
  */
 export interface SubjectSource {
   kind: 'procedural' | 'files';
   width: number;
   height: number;
   observed: THREE.Texture;
-  inferred: THREE.Texture;
+  synthesis: THREE.Texture;
+  alternatives: THREE.Texture[];
   data: THREE.Texture;
-  /** Owned render targets, if any (for disposal). */
+  /** Fraction of the picture occupied by each region id. */
+  regionArea: number[];
+  /** Normalised centroid (origin top-left) of each region id. */
+  regionCentroid: { x: number; y: number }[];
   targets?: THREE.WebGLRenderTarget[];
 }
