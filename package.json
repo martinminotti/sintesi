@@ -20,7 +20,9 @@
     "snapshot": "tsx scripts/snapshot.ts",
     "check": "tsc --noEmit && vitest run && tsx scripts/validate.ts --static",
     "test:tools": "python3 tools/comfy/test_session.py",
-    "subject:export": "tsx scripts/export-subject.ts"
+    "subject:export": "tsx scripts/export-subject.ts",
+    "audio": "tsx scripts/audio.ts",
+    "exhibition": "tsx scripts/exhibition-file.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",

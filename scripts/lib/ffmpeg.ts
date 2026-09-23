@@ -23,6 +23,8 @@ export interface EncodeJob {
   codec: 'h264' | 'prores';
   startNumber?: number;
   crf?: string;
+  /** Optional WAV to mux: AAC for H.264, PCM 24-bit for ProRes. */
+  audio?: string;
 }
 
 export function encode(job: EncodeJob): void {
@@ -33,6 +35,9 @@ export function encode(job: EncodeJob): void {
       ? ['-c:v', 'prores_ks', '-profile:v', '3', '-pix_fmt', 'yuv422p10le', '-vendor', 'apl0']
       : ['-c:v', 'libx264', '-preset', 'slow', '-crf', job.crf ?? '16', '-pix_fmt', 'yuv420p', '-tune', 'grain', '-movflags', '+faststart'];
   const color = ['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709'];
-  const res = spawnSync(ffmpeg, [...input, ...codec, ...color, '-r', String(job.fps), job.output], { stdio: 'inherit' });
+  const audioIn = job.audio ? ['-i', job.audio] : [];
+  const audioCodec = job.audio ? (job.codec === 'prores' ? ['-c:a', 'pcm_s24le'] : ['-c:a', 'aac', '-b:a', '320k']) : [];
+  const map = job.audio ? ['-map', '0:v:0', '-map', '1:a:0', '-shortest'] : [];
+  const res = spawnSync(ffmpeg, [...input, ...audioIn, ...map, ...codec, ...audioCodec, ...color, '-r', String(job.fps), job.output], { stdio: 'inherit' });
   if (res.status !== 0) throw new Error(`ffmpeg failed for ${job.output}`);
 }

@@ -17,6 +17,7 @@ import { loadDataset } from './data/loadDataset';
 import { getTimeline } from './timeline/timelines';
 import { startLivePlayer } from './core/player';
 import { audioParams } from './audio/audioState';
+import { buildScore } from './audio/score';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') ?? 'live';
@@ -50,6 +51,10 @@ const api = {
   control: (frame: number) => engine.artworkState(frame / config.fps),
   probeCoherence: () => engine.probeCoherence(),
   setView: (v: EngineView) => { engine.view = v; },
+  /** The audio score: per-frame state and events, derived from the choreography. */
+  score: () => buildScore(engine),
+  /** Where every trace sits in the archive and in the semantic map (quality-independent). */
+  layout: () => engine.choreography.evidenceItems,
   /**
    * The subject's layers in the file format of a synthesis session (for tests
    * of the file pipeline): PNG data URLs keyed by file name.

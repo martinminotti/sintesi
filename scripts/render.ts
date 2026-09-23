@@ -14,6 +14,8 @@ import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { captureFrame, openEngine, parseArgs, ROOT } from './lib/browser';
 import { exportVideo } from './export';
+import { renderAudio } from './lib/renderAudio';
+import { writeWav24 } from './lib/dsp';
 
 const args = parseArgs(process.argv.slice(2));
 const quality = args.quality ?? 'preview';
@@ -59,6 +61,14 @@ try {
     }
   }
   process.stdout.write('\n');
+  // The sound, from the same session: the same choreography that drew the frames.
+  if (args['no-audio'] !== 'true') {
+    const score = await session.page.evaluate(() => (window as any).__SINTESI__.score());
+    const { L, R, report } = renderAudio(score);
+    const a = Math.round((first / info.fps) * 48000), b = Math.round((last / info.fps) * 48000);
+    writeWav24(path.join(dir, 'audio.wav'), L.subarray(a, b), R.subarray(a, b), writeFileSync);
+    console.log(`audio → ${path.relative(ROOT, path.join(dir, 'audio.wav'))} ${JSON.stringify(report)}`);
+  }
 } finally {
   await session.close();
 }

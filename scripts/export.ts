@@ -17,11 +17,13 @@ export function exportVideo(dir: string, opts: { fps: number; final: boolean; st
   const name = path.basename(dir);
   const pattern = path.join(framesDir, '%06d.png');
   const mp4 = path.join(dir, `${name}.mp4`);
-  encode({ framesPattern: pattern, fps: opts.fps, output: mp4, codec: 'h264', startNumber: start, crf: opts.final ? '12' : '18' });
+  const wav = path.join(dir, 'audio.wav');
+  const audio = existsSync(wav) ? wav : undefined;
+  encode({ framesPattern: pattern, fps: opts.fps, output: mp4, codec: 'h264', startNumber: start, crf: opts.final ? '12' : '18', audio });
   console.log(`video → ${mp4}`);
   if (opts.final) {
     const mov = path.join(dir, `${name}.mov`);
-    encode({ framesPattern: pattern, fps: opts.fps, output: mov, codec: 'prores', startNumber: start });
+    encode({ framesPattern: pattern, fps: opts.fps, output: mov, codec: 'prores', startNumber: start, audio });
     console.log(`master → ${mov}`);
   }
 }
