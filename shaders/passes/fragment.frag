@@ -75,5 +75,6 @@ void main() {
     col = mix(ghost, col, usable);
   }
   float a = alpha * mask * C.presence;
-  outColor = vec4(col * mask * C.presence, a);
+  // Visibility: a trace overwritten by the synthesis (premultiplied).
+  outColor = vec4(col * mask * C.presence, a) * vParams.w;
 }

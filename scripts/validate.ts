@@ -16,7 +16,7 @@ import path from 'node:path';
 import { captureFrame, openEngine, parseArgs, ROOT } from './lib/browser';
 import { validateDataset } from '../src/evidence/validate';
 import { demoDataset } from '../src/data/demoDataset';
-import { TIMELINES } from '../src/timeline/timelines';
+import { study, TIMELINES } from '../src/timeline/timelines';
 import { validateTimeline } from '../src/timeline/timeline';
 import type { Dataset } from '../src/evidence/types';
 
@@ -27,7 +27,7 @@ const fail = (msg: string) => { failures++; console.log(`  ✗ ${msg}`); };
 
 console.log('dataset');
 const userPath = path.join(ROOT, 'archive/metadata/dataset.json');
-let dataset: Dataset = demoDataset;
+let dataset: Dataset = demoDataset();
 try {
   dataset = JSON.parse(readFileSync(userPath, 'utf8')) as Dataset;
   ok(`using archive/metadata/dataset.json ("${dataset.name}")`);
@@ -85,6 +85,27 @@ if (args.static !== 'true') {
   mono ? ok('structure decreases monotonically with confidence') : fail('structure is not monotonic in confidence');
   const info = a.info;
   await a.close();
+
+  console.log('the paradox (study timeline)');
+  const st = await openEngine({ quality: 'dev', timeline: 'study' });
+  const I = study.phases.find((p) => p.phase === 'INFERENCE')!;
+  const S = study.phases.find((p) => p.phase === 'SYNTHESIS')!;
+  const state = async (t: number) => (await st.page.evaluate((tt) => (window as any).__SINTESI__.state(tt), t)) as { confidence: number; acceptance: number; certainty: number };
+  const endI = await state(I.end - 0.05);
+  const still = await state(S.start + (S.end - S.start) * 0.8);
+  console.log(`    end of INFERENCE   confidence ${endI.confidence.toFixed(2)}  acceptance ${endI.acceptance.toFixed(2)}  certainty ${endI.certainty.toFixed(2)}`);
+  console.log(`    SYNTHESIS (still)  confidence ${still.confidence.toFixed(2)}  acceptance ${still.acceptance.toFixed(2)}  certainty ${still.certainty.toFixed(2)}`);
+  still.confidence <= endI.confidence + 0.02 ? ok('the picture becomes more certain without becoming more supported') : fail('confidence rises during SYNTHESIS');
+  still.confidence < 0.5 ? ok(`confidence stays below 0.5 (${still.confidence.toFixed(2)})`) : fail(`confidence ${still.confidence.toFixed(2)} ≥ 0.5 in SYNTHESIS`);
+  still.certainty > 0.95 ? ok(`certainty shown → ${still.certainty.toFixed(2)}`) : fail(`SYNTHESIS is not accepted (certainty ${still.certainty.toFixed(2)})`);
+
+  console.log('loop');
+  const lastFrame = Math.round(st.info.duration * st.info.fps) - 1;
+  const first = (await st.page.evaluate((f) => (window as any).__SINTESI__.thumbnail(f), 0)) as number[];
+  const last = (await st.page.evaluate((f) => (window as any).__SINTESI__.thumbnail(f), lastFrame)) as number[];
+  const seam = first.reduce((s, v, i) => s + Math.abs(v - last[i]), 0) / first.length;
+  seam < 0.01 ? ok(`last and first frame match (mean difference ${(seam * 100).toFixed(2)} %)`) : fail(`visible seam at the loop (mean difference ${(seam * 100).toFixed(2)} %)`);
+  await st.close();
 
   const b = await openEngine({ quality: 'dev' });
   const fresh = hash(await captureFrame(b.page, frames[2]));

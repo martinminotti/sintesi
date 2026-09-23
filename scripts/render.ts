@@ -20,9 +20,11 @@ const quality = args.quality ?? 'preview';
 const seed = args.seed !== undefined ? Number(args.seed) : undefined;
 const t0 = Date.now();
 
-const session = await openEngine({ quality, seed, timeline: args.timeline, gpu: args.gpu === 'true' });
+const extra: Record<string, string> = {};
+for (const k of ['composition', 'typography']) if (args[k]) extra[k] = args[k];
+const session = await openEngine({ quality, seed, timeline: args.timeline, gpu: args.gpu === 'true', extraParams: extra });
 const { info } = session;
-const name = args.out ?? `${info.timeline}-${info.quality}-seed${info.seed}`;
+const name = args.out ?? `${info.timeline}-${info.quality}-seed${info.seed}${args.composition ? '-' + args.composition : ''}`;
 const dir = path.resolve(ROOT, 'renders', name);
 const framesDir = path.join(dir, 'frames');
 if (existsSync(framesDir)) rmSync(framesDir, { recursive: true });
@@ -34,7 +36,7 @@ console.log(`SINTESI · ${info.timeline} · ${info.quality} ${info.width}×${inf
 console.log(`renderer: ${info.renderer}`);
 
 const hashes: Record<string, string> = {};
-const control: string[] = ['frame,t,phase,phaseProgress,confidence,coherence,acceptance,evidence,relation,inferred,harmonicity,pulse,density,spread,level'];
+const control: string[] = ['frame,t,phase,phaseProgress,confidence,acceptance,certainty,evidence,relation,picture,unsupported,determination,events,continuity,harmonicity,pulse,fiction,level'];
 const started = Date.now();
 try {
   for (let f = first; f < last; f++) {
@@ -48,8 +50,8 @@ try {
     }, f)) as Record<string, number | string | null>;
     const a = (await session.page.evaluate((st) => (window as any).__SINTESI_AUDIO__?.(st) ?? null, s)) as Record<string, number> | null;
     const n = (v: unknown) => (typeof v === 'number' ? v.toFixed(4) : '');
-    control.push([f, n(s.t), s.phase ?? '', n(s.phaseProgress), n(s.confidence), n(s.coherence), n(s.acceptance), s.evidence, n(s.relation), n(s.inferred),
-      n(a?.harmonicity), n(a?.pulse), n(a?.density), n(a?.spread), n(a?.level)].join(','));
+    control.push([f, n(s.t), s.phase ?? '', n(s.phaseProgress), n(s.confidence), n(s.acceptance), n(s.certainty), s.evidence, n(s.relation), n(s.picture), n(s.unsupported), n(s.determination),
+      n(a?.events), n(a?.continuity), n(a?.harmonicity), n(a?.pulse), n(a?.fiction), n(a?.level)].join(','));
     const done = f - first + 1;
     if (done % 24 === 0 || f === last - 1) {
       const per = (Date.now() - started) / done / 1000;

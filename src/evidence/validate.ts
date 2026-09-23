@@ -1,6 +1,6 @@
 import type { Dataset, EvidenceType, Provenance } from './types';
 
-const TYPES: EvidenceType[] = ['photograph', 'texture', 'text', 'date', 'coordinates', 'location', 'audio', 'metadata'];
+const TYPES: EvidenceType[] = ['photograph', 'texture', 'text', 'date', 'coordinates', 'location', 'audio', 'metadata', 'geometry', 'absence'];
 const PROVENANCES: Provenance[] = ['observed', 'derived', 'inferred', 'synthetic'];
 
 export function validateDataset(ds: Dataset): string[] {
@@ -31,10 +31,14 @@ export function validateDataset(ds: Dataset): string[] {
       const c = vp?.crop;
       if (!c) errors.push(`${e.id}: photograph/texture needs visualProperties.crop`);
       else if (c.x < 0 || c.y < 0 || c.w <= 0 || c.h <= 0 || c.x + c.w > 1.0001 || c.y + c.h > 1.0001) errors.push(`${e.id}: crop outside the picture`);
+    } else if (e.type === 'absence') {
+      const c = vp?.crop;
+      if (c && (c.x < 0 || c.y < 0 || c.w <= 0 || c.h <= 0 || c.x + c.w > 1.0001 || c.y + c.h > 1.0001)) errors.push(`${e.id}: crop outside the picture`);
     } else if (!vp?.text) {
       errors.push(`${e.id}: typeset evidence needs visualProperties.text`);
     }
   }
   if ((ds.evidence ?? []).length === 0) errors.push('dataset has no evidence');
+  if (ds.residue && !ds.evidence.some((e) => e.id === ds.residue && e.visualProperties?.crop)) errors.push(`residue ${ds.residue} must be a photograph in the dataset`);
   return errors;
 }

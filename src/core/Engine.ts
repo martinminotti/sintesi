@@ -9,13 +9,16 @@ import { Atlas } from '../rendering/Atlas';
 import { registerAtlasContent } from '../rendering/atlasContent';
 import { EdgeLayer, FragmentLayer } from '../rendering/layers';
 import { Choreography, type Frame } from './choreography';
-import { computeArtisticState, type ArtisticState } from '../confidence/artisticState';
+import { computeArtworkState, type ArtworkState } from '../confidence/artworkState';
+import { CLASS_CONFIDENCE, CLASS_ORDER, MAX_REGIONS, REGIONS } from '../subject/regions';
 import { datasetHash } from '../data/loadDataset';
 
-export type EngineView = 'work' | 'subject-observed' | 'subject-inferred' | 'subject-data' | 'field';
+export type EngineView = 'work' | 'subject-observed' | 'subject-synthesis' | 'subject-alt1' | 'subject-alt2' | 'subject-alt3' | 'subject-data' | 'field' | 'epistemic';
+
+/** Focus distance (m) of the photographic response, per composition. */
+const FOCUS: Record<string, number> = { A: 0.86, B: 1.95, C: 1.43 };
 
 const MAX_ANCHORS = 24;
-const MAX_INFERENCES = 8;
 
 /**
  * The engine owns the GPU resources and renders any instant of the work.
@@ -23,6 +26,7 @@ const MAX_INFERENCES = 8;
  */
 export class Engine {
   readonly renderer: THREE.WebGLRenderer;
+  view: EngineView;
   subject!: SubjectSource;
   choreography!: Choreography;
   private atlas!: Atlas;
@@ -51,6 +55,7 @@ export class Engine {
     readonly timeline: Timeline,
     readonly opts: { preserveDrawingBuffer: boolean; view: EngineView },
   ) {
+    this.view = opts.view;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: false,
@@ -72,13 +77,13 @@ export class Engine {
       document.fonts.load(`400 32px "IBM Plex Mono"`),
     ]);
 
-    this.subject = createProceduralSubject(this.renderer, { width, height, seed, steps: quality.subjectSteps });
+    this.subject = createProceduralSubject(this.renderer, { width, height, seed, steps: quality.subjectSteps, supersample: quality.subjectSupersample, composition: this.config.composition });
 
     const ppu = width / WORLD.width;
     this.atlas = new Atlas(ppu);
     registerAtlasContent(this.atlas, this.dataset, this.timeline, seed);
     this.atlas.build();
-    this.choreography = new Choreography(this.dataset, this.timeline, this.atlas, seed);
+    this.choreography = new Choreography(this.dataset, this.timeline, this.atlas, seed, this.config.typography, this.subject.regionCentroid);
     this.choreography.prepare();
 
     const rtOpts = { type: THREE.HalfFloatType, depthBuffer: false, generateMipmaps: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter } as const;
@@ -94,10 +99,7 @@ export class Engine {
         uAnchorRect: { value: Array.from({ length: MAX_ANCHORS }, () => new THREE.Vector4()) },
         uAnchorParams: { value: Array.from({ length: MAX_ANCHORS }, () => new THREE.Vector2()) },
         uAnchorCount: { value: 0 },
-        uInference: { value: Array.from({ length: MAX_INFERENCES }, () => new THREE.Vector4()) },
-        uInferenceCount: { value: 0 },
         uReach: { value: 0 },
-        uPrior: { value: 0 },
         uTime: { value: 0 },
         uSeed: { value: seed % 1000 },
       },
@@ -113,9 +115,17 @@ export class Engine {
         void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: glsl('passes/composite.frag'),
       uniforms: {
-        uInferred: { value: this.subject.inferred },
+        uSynthesis: { value: this.subject.synthesis },
+        uAlt0: { value: this.subject.alternatives[0] },
+        uAlt1: { value: this.subject.alternatives[1] },
+        uAlt2: { value: this.subject.alternatives[2] },
+        uData: { value: this.subject.data },
         uField: { value: this.fieldRT.texture },
-        uAcceptance: { value: 0 },
+        uConfidence: { value: Array.from({ length: MAX_REGIONS }, (_, i) => CLASS_CONFIDENCE[REGIONS[i]?.class ?? 'absent']) },
+        uAcceptance: { value: new Array(MAX_REGIONS).fill(0) },
+        uPresence: { value: new Array(MAX_REGIONS).fill(0) },
+        uPhoto: { value: 0 },
+        uFocus: { value: FOCUS[this.config.composition] ?? 1.4 },
         uTime: { value: 0 },
         uSeed: { value: seed % 1000 },
         uTaps: { value: quality.blurTaps },
@@ -152,12 +162,16 @@ export class Engine {
     this.debugMat = new THREE.RawShaderMaterial({
       glslVersion: THREE.GLSL3,
       vertexShader: FULLSCREEN_VERT,
-      fragmentShader: `precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uTex; uniform int uMode;
+      fragmentShader: `precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uTex; uniform int uMode; uniform float uClass[16];
         void main(){ vec4 c = texture(uTex, vUv);
-          if (uMode == 1) o = vec4(c.r, c.g * 1.5, c.b * 1.5, 1.0);
-          else if (uMode == 2) o = vec4(vec3(c.r) * vec3(1.0, 0.92, 0.8) + vec3(0.0, 0.0, c.g * 0.4), 1.0);
+          if (uMode == 1) o = vec4(c.r, fract(c.g * 16.0 * 0.37), fract(c.g * 16.0 * 0.61), 1.0);
+          else if (uMode == 2) o = vec4(vec3(c.r) * vec3(1.0, 0.92, 0.8) + vec3(0.0, 0.0, c.b * 0.4), 1.0);
+          else if (uMode == 3) { int id = int(floor(c.g * 16.0 + 0.5)); float cls = uClass[id];
+            // observed white · derived light · inferred mid · synthetic dark · absent hatched black
+            float v = cls < 0.5 ? 0.95 : cls < 1.5 ? 0.7 : cls < 2.5 ? 0.45 : cls < 3.5 ? 0.22 : 0.06 + 0.1 * step(0.5, fract((gl_FragCoord.x + gl_FragCoord.y) / 12.0));
+            o = vec4(vec3(v), 1.0); }
           else o = vec4(c.rgb, 1.0); }`,
-      uniforms: { uTex: { value: null }, uMode: { value: 0 } },
+      uniforms: { uTex: { value: null }, uMode: { value: 0 }, uClass: { value: Array.from({ length: MAX_REGIONS }, (_, i) => CLASS_ORDER.indexOf(REGIONS[i]?.class ?? 'absent')) } },
     });
     this.debugScene.add(fullscreenTriangle(this.debugMat));
 
@@ -174,7 +188,7 @@ export class Engine {
     const r = this.renderer;
     const inference = frame.field.reach > 0 || frame.field.anchors.length > 0;
 
-    // 1. Confidence field.
+    // 1. Confidence field and attention.
     if (inference) {
       const u = this.fieldMat.uniforms;
       const anchors = frame.field.anchors.slice(0, MAX_ANCHORS);
@@ -183,20 +197,21 @@ export class Engine {
         (u.uAnchorParams.value[i] as THREE.Vector2).set(a.confidence, a.arrival);
       });
       u.uAnchorCount.value = anchors.length;
-      const infs = frame.field.inferences.slice(0, MAX_INFERENCES);
-      infs.forEach((f, i) => (u.uInference.value[i] as THREE.Vector4).set(f.center.x, f.center.y, f.radius, f.confidence));
-      u.uInferenceCount.value = infs.length;
       u.uReach.value = frame.field.reach;
-      u.uPrior.value = frame.field.prior;
       u.uTime.value = t;
       r.setRenderTarget(this.fieldRT);
       r.render(this.fieldScene, this.screenCamera);
     }
+    const cu = this.compositeMat.uniforms;
+    for (const rs of frame.regions) {
+      cu.uAcceptance.value[rs.id] = rs.acceptance;
+      cu.uPresence.value[rs.id] = rs.presence;
+    }
+    cu.uPhoto.value = frame.photo;
 
     // 2. Scene: inferred picture, relationships, evidence.
     this.compositeMesh.visible = inference;
     this.compositeMat.uniforms.uTime.value = t;
-    this.compositeMat.uniforms.uAcceptance.value = frame.field.acceptance;
     this.edges.update(frame.edges, t);
     this.fragments.update(frame.elements, t);
     this.camera.zoom = frame.camera.zoom;
@@ -208,21 +223,21 @@ export class Engine {
 
     // 3. Output.
     r.setRenderTarget(null);
-    const view = this.opts.view;
+    const view = this.view;
     if (view === 'work') {
       this.postMat.uniforms.uFrame.value = Math.round(t * this.config.fps);
       r.render(this.postScene, this.screenCamera);
     } else {
-      const tex = { 'subject-observed': this.subject.observed, 'subject-inferred': this.subject.inferred, 'subject-data': this.subject.data, field: this.fieldRT.texture }[view];
+      const tex = { 'subject-observed': this.subject.observed, 'subject-synthesis': this.subject.synthesis, 'subject-alt1': this.subject.alternatives[0], 'subject-alt2': this.subject.alternatives[1], 'subject-alt3': this.subject.alternatives[2], 'subject-data': this.subject.data, field: this.fieldRT.texture, epistemic: this.subject.data }[view];
       this.debugMat.uniforms.uTex.value = tex;
-      this.debugMat.uniforms.uMode.value = view === 'subject-data' ? 1 : view === 'field' ? 2 : 0;
+      this.debugMat.uniforms.uMode.value = view === 'subject-data' ? 1 : view === 'field' ? 2 : view === 'epistemic' ? 3 : 0;
       r.render(this.debugScene, this.screenCamera);
     }
     return frame;
   }
 
-  artisticState(t: number): ArtisticState {
-    return computeArtisticState(this.choreography.evaluate(t), this.choreography);
+  artworkState(t: number): ArtworkState {
+    return computeArtworkState(this.choreography.evaluate(t), this.config.seed, this.subject.regionArea, this.choreography.graph.edges.length);
   }
 
   info() {
@@ -264,7 +279,7 @@ export class Engine {
     const h = aspect >= 1 ? 1.6 / aspect : 1.6;
     const px = new Uint8Array(size * size * 4);
     const read = (k: number): Float32Array => {
-      layer.update([{ id: 'probe', kind: 'evidence', x: 0, y: 0, w, h, confidence: k, k, source: 1, uv: [c.x, 1 - c.y - c.h, c.w, c.h], seed: 1 }], 3.0);
+      layer.update([{ id: 'probe', kind: 'evidence', x: 0, y: 0, w, h, confidence: k, k, source: 1, uv: [c.x, 1 - c.y - c.h, c.w, c.h], seed: 1, visibility: 1 }], 3.0);
       this.renderer.setRenderTarget(rt);
       this.renderer.setClearColor(0x000000, 1);
       this.renderer.clear();

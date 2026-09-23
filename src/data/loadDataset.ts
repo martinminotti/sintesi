@@ -2,6 +2,7 @@ import { hash32 } from '../core/random';
 import type { Dataset } from '../evidence/types';
 import { validateDataset } from '../evidence/validate';
 import { demoDataset } from './demoDataset';
+import type { Composition } from '../config';
 
 /**
  * The artistic dataset lives in archive/metadata/dataset.json. While it does
@@ -9,9 +10,9 @@ import { demoDataset } from './demoDataset';
  */
 const files = import.meta.glob('../../archive/metadata/dataset.json', { eager: true, import: 'default' }) as Record<string, Dataset>;
 
-export function loadDataset(): Dataset {
+export function loadDataset(composition: Composition = 'C'): Dataset {
   const user = Object.values(files)[0];
-  const dataset = user ?? demoDataset;
+  const dataset = user ?? demoDataset(composition);
   const errors = validateDataset(dataset);
   if (errors.length) throw new Error(`Invalid dataset "${dataset.name}":\n  ${errors.join('\n  ')}`);
   return dataset;

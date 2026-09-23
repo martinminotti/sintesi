@@ -6,7 +6,6 @@ in vec4 vParams;
 in float vWidthPx;
 out vec4 outColor;
 
-uniform float uTime;
 uniform vec3 uInk;
 
 void main() {
@@ -17,8 +16,9 @@ void main() {
   // Weak relations are intermittent: the system is not sure they exist.
   float dashLen = 0.09;
   float duty = 0.3 + 0.7 * smoothstep(0.15, 0.7, strength);
-  float cell = floor(vCoord.x / dashLen - uTime * 0.25 * (1.0 - strength));
-  float dash = step(fract(vCoord.x / dashLen - uTime * 0.25 * (1.0 - strength)), duty);
+  // Dashes do not travel: a relation is a state, not a signal.
+  float cell = floor(vCoord.x / dashLen);
+  float dash = step(fract(vCoord.x / dashLen), duty);
   dash *= cellKnown(vec2(cell, vParams.w), C.dropout, vParams.w);
   float intensity = (0.16 + 0.5 * strength) * C.presence;
   float a = across * dash * intensity;

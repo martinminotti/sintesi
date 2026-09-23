@@ -51,10 +51,10 @@ export function startLivePlayer(engine: Engine, config: EngineConfig): void {
     const t = now();
     engine.renderAt(t);
     if (document.body.classList.contains('debug')) {
-      const s = engine.artisticState(t);
+      const s = engine.artworkState(t);
       debug.textContent = `t ${t.toFixed(2)}  ${s.phase ?? '—'} ${(s.phaseProgress * 100).toFixed(0)}%\n` +
-        `confidence ${s.confidence.toFixed(3)}  coherence ${s.coherence.toFixed(3)}  acceptance ${s.acceptance.toFixed(2)}\n` +
-        `evidence ${s.evidence}  relation ${s.relation.toFixed(2)}  inferred ${s.inferred.toFixed(2)}\n` +
+        `confidence ${s.confidence.toFixed(3)}  acceptance ${s.acceptance.toFixed(3)}  certainty ${s.certainty.toFixed(3)}\n` +
+        `evidence ${s.evidence}  relation ${s.relation.toFixed(2)}  picture ${s.picture.toFixed(2)}  determination ${s.determination.toFixed(2)}\n` +
         `${config.quality.name} ${config.width}×${config.height} seed ${config.seed}${paused ? '  [paused]' : ''}`;
     }
     requestAnimationFrame(loop);

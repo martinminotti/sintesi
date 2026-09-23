@@ -204,3 +204,67 @@ export function drawConcept(label: string, sizeWorld: number): AtlasDraw {
     ctx.fillText(label, r * 2 + px * 0.6, h / 2);
   };
 }
+
+/**
+ * An ABSENCE: the slot of an album where a photograph should be.
+ * Four photo corners and nothing between them.
+ */
+export function drawAbsence(): AtlasDraw {
+  return (ctx, w, h, ppu) => {
+    const c = Math.min(w, h) * 0.14;
+    ctx.fillStyle = INK;
+    ctx.globalAlpha = 0.7;
+    const tri = (x: number, y: number, dx: number, dy: number): void => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + dx * c, y);
+      ctx.lineTo(x, y + dy * c);
+      ctx.closePath();
+      ctx.fill();
+    };
+    tri(0, 0, 1, 1);
+    tri(w, 0, -1, 1);
+    tri(0, h, 1, -1);
+    tri(w, h, -1, -1);
+    ctx.globalAlpha = 0.12;
+    ctx.lineWidth = Math.max(1, ppu * 0.004);
+    ctx.strokeStyle = INK;
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+  };
+}
+
+/** GEOMETRY: a measured plan of a room — walls, a window, a door swing, one dimension. */
+export function drawPlan(seed: number, id: string, labelSize: number): AtlasDraw {
+  return (ctx, w, h, ppu) => {
+    const rng = createRng(seed, `plan:${id}`);
+    const planH = h - labelSize * ppu * 1.8;
+    const m = ppu * 0.06;
+    const lw = Math.max(1, ppu * 0.012);
+    ctx.strokeStyle = INK;
+    ctx.fillStyle = INK;
+    ctx.lineWidth = lw;
+    ctx.globalAlpha = 0.85;
+    const x0 = m, y0 = m, x1 = w - m, y1 = planH - m;
+    // Walls, with a gap for the window on the top wall and one for the door.
+    const wa = x0 + (x1 - x0) * rng.range(0.15, 0.3), wb = wa + (x1 - x0) * 0.28;
+    const da = y0 + (y1 - y0) * rng.range(0.55, 0.7), db = da + (y1 - y0) * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(wa, y0); ctx.lineTo(x0, y0); ctx.lineTo(x0, y1); ctx.lineTo(x1, y1); ctx.lineTo(x1, db);
+    ctx.moveTo(x1, da); ctx.lineTo(x1, y0); ctx.lineTo(wb, y0);
+    ctx.stroke();
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = Math.max(1, ppu * 0.004);
+    ctx.beginPath();
+    ctx.moveTo(wa, y0 - lw); ctx.lineTo(wb, y0 - lw);
+    ctx.moveTo(wa, y0 + lw); ctx.lineTo(wb, y0 + lw);
+    // Door swing.
+    ctx.moveTo(x1, da);
+    ctx.lineTo(x1 - (db - da), da);
+    ctx.arc(x1, da, db - da, Math.PI, Math.PI / 2, true);
+    ctx.stroke();
+    ctx.globalAlpha = 0.75;
+    ctx.font = `${labelSize * ppu}px ${FONT_MONO}`;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('3.40 × 4.15', 0, h);
+  };
+}

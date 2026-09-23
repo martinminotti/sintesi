@@ -13,6 +13,8 @@ mkdirSync(out, { recursive: true });
 
 const extra: Record<string, string> = {};
 if (args.view) extra.view = args.view;
+if (args.views) extra.view = args.views.split(',')[0];
+for (const k of ['composition', 'typography']) if (args[k]) extra[k] = args[k];
 const session = await openEngine({
   quality: args.quality ?? 'dev',
   seed: args.seed ? Number(args.seed) : undefined,
@@ -21,12 +23,17 @@ const session = await openEngine({
   extraParams: extra,
 });
 try {
-  for (const t of times) {
-    const frame = Math.round(t * session.info.fps);
-    const png = await captureFrame(session.page, frame);
-    const name = `${args.view ?? session.info.timeline}_${session.info.quality}_t${t.toFixed(2)}.png`;
-    writeFileSync(path.join(out, name), png);
-    console.log(path.relative(ROOT, path.join(out, name)));
+  // --views=a,b renders several views in one session.
+  const views = (args.views ?? args.view ?? '').split(',');
+  for (const view of views) {
+    if (view) await session.page.evaluate((v) => (window as any).__SINTESI__.setView(v), view);
+    for (const t of times) {
+      const frame = Math.round(t * session.info.fps);
+      const png = await captureFrame(session.page, frame);
+      const name = `${view || session.info.timeline}${args.composition ? '_' + args.composition : ''}_${session.info.quality}_t${t.toFixed(2)}.png`;
+      writeFileSync(path.join(out, name), png);
+      console.log(path.relative(ROOT, path.join(out, name)));
+    }
   }
 } finally {
   await session.close();

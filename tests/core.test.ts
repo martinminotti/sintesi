@@ -66,17 +66,17 @@ describe('timeline', () => {
 });
 
 describe('demo dataset and graph', () => {
-  it('is valid', () => expect(validateDataset(demoDataset)).toEqual([]));
+  it('is valid', () => expect(validateDataset(demoDataset())).toEqual([]));
   it('derives edges and inferences deterministically', () => {
-    const g = buildGraph(demoDataset);
+    const g = buildGraph(demoDataset());
     expect(g.edges.length).toBeGreaterThan(30);
     for (const e of g.edges) expect(e.strength).toBeGreaterThanOrEqual(0);
-    const inf = deriveInferences(demoDataset, g);
+    const inf = deriveInferences(demoDataset(), g);
     expect(inf.map((i) => i.id)).toContain('INF_PERSON');
     for (const i of inf) expect(i.confidence).toBeLessThanOrEqual(0.6);
   });
   it('layout is a pure function of the seed', () => {
-    const g = buildGraph(demoDataset);
+    const g = buildGraph(demoDataset());
     const run = (seed: number) =>
       forceLayout({ graph: g, sizes: new Map(), pinned: new Map([['PERSON', { x: 0, y: 0 }]]), initial: new Map(), bounds: { minX: -4, maxX: 4, minY: -7, maxY: 7 }, seed, iterations: 60 });
     const a = run(7);

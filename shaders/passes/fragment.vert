@@ -2,7 +2,7 @@
 in vec3 position;
 in vec4 iRect;   // centre x, y, width, height (world)
 in vec4 iUV;     // source rect u0, v0, du, dv
-in vec4 iParams; // coherence k, source (0 atlas, 1 observed), seed, unused
+in vec4 iParams; // coherence k, source (0 atlas, 1 observed), seed, visibility
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

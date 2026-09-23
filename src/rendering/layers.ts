@@ -58,10 +58,10 @@ export class FragmentLayer {
   update(elements: ElementState[], t: number): void {
     let n = 0;
     for (const e of elements) {
-      if (e.k <= 0.001 || n >= this.capacity) continue;
+      if (e.k <= 0.001 || e.visibility <= 0.001 || n >= this.capacity) continue;
       this.rect.setXYZW(n, e.x, e.y, e.w, e.h);
       this.uv.setXYZW(n, e.uv[0], e.uv[1], e.uv[2], e.uv[3]);
-      this.params.setXYZW(n, e.k, e.source, e.seed, 0);
+      this.params.setXYZW(n, e.k, e.source, e.seed, e.visibility);
       n++;
     }
     this.geometry.instanceCount = n;

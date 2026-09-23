@@ -1,33 +1,42 @@
-import type { ArtisticState } from '../confidence/artisticState';
+import type { ArtworkState } from '../confidence/artworkState';
 
 /**
- * AUDIO — architecture only (milestone 1).
+ * AUDIO — the same epistemic process, heard.
  *
- * The sound of the work follows the same law as the image: loss of
- * certainty is loss of structure, not loss of volume. These parameters are
- * written per frame to renders/<id>/control.csv, so that the sound design
- * (Logic Pro or any DAW) can be automated from the exact curves of the render.
- * A live WebAudio renderer can later consume the same values.
+ *   evidence → correlation → inference → certainty → fiction → absence
+ *
+ * Many small separate events while the system holds traces; a sound that grows
+ * continuous, full and "real" as acceptance rises — and less informative;
+ * structure lost again when the picture is taken apart; silence at the end.
+ * More coherence, less evidence.
+ *
+ * These parameters are written per frame to renders/<id>/control.csv so that
+ * the sound design can be automated from the exact curves of the render
+ * (and, later, rendered offline from the same state).
  */
 export interface AudioParams {
-  /** 1 = tonal, periodic; 0 = noise. Follows displayed coherence. */
+  /** Discrete transients (clicks, handling noise, fragments of recordings): information. */
+  events: number;
+  /** Continuity of the room tone / sustained layer: acceptance. */
+  continuity: number;
+  /** Tonal, periodic vs noisy: what the viewer is given as certain. */
   harmonicity: number;
-  /** Rhythmic regularity. Follows relationships. */
+  /** Rhythmic regularity: relationships. */
   pulse: number;
-  /** Number of simultaneous voices / events. Follows evidence. */
-  density: number;
-  /** Spectral width of the inferred layer. Follows the inferred share. */
-  spread: number;
-  /** Overall level: only absence is silence. */
+  /** Proportion of the sound that no recording supports (synthesised room, surf). */
+  fiction: number;
+  /** Only absence is silence. */
   level: number;
 }
 
-export function audioParams(s: ArtisticState, maxEvidence = 32): AudioParams {
+export function audioParams(s: ArtworkState, maxEvidence = 36): AudioParams {
+  const evidence = Math.min(1, s.evidence / maxEvidence);
   return {
-    harmonicity: s.coherence,
+    events: evidence * (1 - s.acceptance),
+    continuity: s.acceptance,
+    harmonicity: s.certainty,
     pulse: s.relation,
-    density: Math.min(1, s.evidence / maxEvidence),
-    spread: s.inferred,
-    level: s.phase === null ? 0 : Math.min(1, 0.25 + 0.75 * Math.max(s.coherence, s.inferred)),
+    fiction: s.unsupported * s.acceptance,
+    level: s.phase === null ? 0 : Math.min(1, 0.15 + 0.85 * Math.max(evidence, s.picture)),
   };
 }

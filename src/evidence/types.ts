@@ -14,7 +14,9 @@ export type EvidenceType =
   | 'coordinates'
   | 'location' // a map fragment
   | 'audio' // a recorded sound, shown as its waveform
-  | 'metadata'; // technical traces: exposure, film stock, scan settings
+  | 'metadata' // technical traces: exposure, film stock, the verso of a print
+  | 'geometry' // a measured plan
+  | 'absence'; // a documented gap: the slot where a trace should be
 
 /**
  * How a piece of information came to exist.
@@ -26,7 +28,10 @@ export type EvidenceType =
 export type Provenance = 'observed' | 'derived' | 'inferred' | 'synthetic';
 
 export interface VisualProperties {
-  /** For photographs/textures: normalised rect of the subject image (origin top-left). */
+  /**
+   * Normalised rect of the picture (origin top-left). For photographs and textures:
+   * the part of the scene they recorded. For absences: the part of the scene they leave open.
+   */
   crop?: Rect;
   /** For typeset evidence. */
   text?: string;
@@ -64,6 +69,8 @@ export interface Concept {
 
 export interface Dataset {
   name: string;
+  /** The trace that survives the end of the cycle and opens the next one. */
+  residue?: string;
   evidence: Evidence[];
   concepts: Concept[];
 }
