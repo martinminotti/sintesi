@@ -16,6 +16,7 @@ import { Engine, type EngineView } from './core/Engine';
 import { loadDataset } from './data/loadDataset';
 import { getTimeline } from './timeline/timelines';
 import { startLivePlayer } from './core/player';
+import { audioParams } from './audio/audioState';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') ?? 'live';
@@ -47,5 +48,6 @@ const api = {
   probeCoherence: () => engine.probeCoherence(),
 };
 (window as unknown as { __SINTESI__: typeof api }).__SINTESI__ = api;
+(window as unknown as { __SINTESI_AUDIO__: typeof audioParams }).__SINTESI_AUDIO__ = audioParams;
 
 if (mode !== 'render') startLivePlayer(engine, config);

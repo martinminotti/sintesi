@@ -249,7 +249,7 @@ export class Engine {
    * correlation with the certain version (structure). The work requires
    * structure to fall much faster than energy.
    */
-  probeCoherence(levels = [1, 0.8, 0.6, 0.4, 0.2]): { k: number; meanLuma: number; structure: number }[] {
+  probeCoherence(levels = [1, 0.8, 0.6, 0.4, 0.2]): { k: number; meanLuma: number; structure: number; layout: number }[] {
     const ev = this.dataset.evidence.find((e) => e.type === 'photograph');
     if (!ev?.visualProperties?.crop) return [];
     const c = ev.visualProperties.crop;
@@ -274,16 +274,45 @@ export class Engine {
       for (let i = 0; i < l.length; i++) l[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
       return l;
     };
+    // Structure = spatial detail: the image minus its local mean (high-pass),
+    // so that a blurred silhouette does not count as preserved structure.
+    const highpass = (img: Float32Array): Float32Array => {
+      const r = 6;
+      const integral = new Float64Array((size + 1) * (size + 1));
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        integral[(y + 1) * (size + 1) + x + 1] = img[y * size + x] + integral[y * (size + 1) + x + 1] + integral[(y + 1) * (size + 1) + x] - integral[y * (size + 1) + x];
+      }
+      const out = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const x0 = Math.max(0, x - r), x1 = Math.min(size, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(size, y + r + 1);
+        const sum = integral[y1 * (size + 1) + x1] - integral[y0 * (size + 1) + x1] - integral[y1 * (size + 1) + x0] + integral[y0 * (size + 1) + x0];
+        out[y * size + x] = img[y * size + x] - sum / ((x1 - x0) * (y1 - y0));
+      }
+      return out;
+    };
+    // Analyse only the interior of the trace, away from its border with the black field.
+    const inner: number[] = [];
+    const hx = (w / 2) * 0.8 * (size / 2), hy = (h / 2) * 0.8 * (size / 2);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (Math.abs(x + 0.5 - size / 2) < hx && Math.abs(y + 0.5 - size / 2) < hy) inner.push(y * size + x);
+    }
+    const pick = (a: Float32Array): Float32Array => Float32Array.from(inner, (i) => a[i]);
+    const corr = (a0: Float32Array, b0: Float32Array): number => {
+      const a = pick(a0), b = pick(b0);
+      let ma = 0, mb = 0;
+      for (let i = 0; i < a.length; i++) { ma += a[i]; mb += b[i]; }
+      ma /= a.length; mb /= b.length;
+      let cov = 0, va = 0, vb = 0;
+      for (let i = 0; i < a.length; i++) { cov += (a[i] - ma) * (b[i] - mb); va += (a[i] - ma) ** 2; vb += (b[i] - mb) ** 2; }
+      return cov / Math.max(1e-9, Math.sqrt(va * vb));
+    };
+    const mean = (a0: Float32Array): number => { const a = pick(a0); return a.reduce((s, v) => s + v, 0) / a.length; };
     const ref = read(1);
-    const stats = (a: Float32Array) => { let m = 0; for (const v of a) m += v; m /= a.length; let s = 0; for (const v of a) s += (v - m) ** 2; return { m, sd: Math.sqrt(s / a.length) }; };
-    const rs = stats(ref);
+    const refDetail = highpass(ref);
+    const refMean = mean(ref);
     const out = levels.map((k) => {
       const img = read(k);
-      const s = stats(img);
-      let cov = 0;
-      for (let i = 0; i < img.length; i++) cov += (img[i] - s.m) * (ref[i] - rs.m);
-      cov /= img.length;
-      return { k, meanLuma: s.m / Math.max(1e-6, rs.m), structure: cov / Math.max(1e-6, s.sd * rs.sd) };
+      return { k, meanLuma: mean(img) / Math.max(1e-6, refMean), structure: corr(highpass(img), refDetail), layout: corr(img, ref) };
     });
     this.renderer.setRenderTarget(null);
     rt.dispose();

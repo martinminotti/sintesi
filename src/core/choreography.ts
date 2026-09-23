@@ -156,7 +156,7 @@ export class Choreography {
       .map((o) => o.it);
     const acqSpan = archive ? archive.end - archive.start : 1;
     order.forEach((it, i) => {
-      const u = 0.14 + 0.72 * Math.pow(i / Math.max(1, order.length - 1), 0.85);
+      const u = 0.14 + 0.72 * Math.pow(i / Math.max(1, order.length - 1), 0.72);
       it.acquire = (archive?.start ?? 0) + acqSpan * u;
     });
 
@@ -346,7 +346,8 @@ export class Choreography {
     }
 
     // Confidence field.
-    const reach = I ? smoothstep(0.16, 0.97, uI) : 0;
+    // Belief extends gradually over the whole phase, slowest at the end.
+    const reach = I ? Math.pow(smoothstep(0.1, 1.0, uI), 0.9) * smoothstep(0.1, 0.45, uI) ** 0.5 : 0;
     const anchors: FieldAnchor[] = [];
     if (I) {
       const len = I.end - I.start;
@@ -371,7 +372,7 @@ export class Choreography {
       timeline: tl,
       elements,
       edges,
-      field: { anchors, inferences, reach, prior: 0.2 * smoothstep(0.35, 1.0, uI), acceptance: 0 },
+      field: { anchors, inferences, reach, prior: 0.13 * smoothstep(0.55, 1.0, uI), acceptance: 0 },
       camera: { zoom },
     };
   }
